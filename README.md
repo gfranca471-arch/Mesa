@@ -102,3 +102,16 @@ As fichas agora usam **marcadores visuais clicáveis** (dots):
 ---
 
 Feito com ❤️ para a comunidade RPGista brasileira.
+
+
+## Render — importante
+Os arquivos `server.js`, `index.html`, `mesa.html` e `package.json` devem ficar no MESMO diretório raiz do serviço.
+A rota `/` é servida explicitamente por `server.js`. Para verificar o deploy, abra `/health`: deve retornar `ok: true`, `index: true` e `mesa: true`.
+
+## V12 — dados físicos / Vampiro V5
+- D10 reconstruído como trapezoedro pentagonal com 10 faces-kite planas.
+- D4/D6/D8/D12/D20 preservam os poliedros físicos correspondentes.
+- D100 é exibido fisicamente como par de D10 (dezenas + unidades), mantendo resultado lógico de 1 a 100.
+- Em mesas de Vampiro, a opção D10 Vampiro V5 aparece abaixo do D10 normal.
+- Dados de Fome substituem dados normais dentro do pool total; não aumentam a quantidade rolada.
+- Ao finalizar a física, a face que define o resultado é orientada para cima e os dados permanecem visíveis por 7 segundos.

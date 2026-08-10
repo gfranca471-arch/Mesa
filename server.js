@@ -10,7 +10,27 @@ const io = new Server(server, {
     transports: ['websocket', 'polling']
 });
 
-app.use(express.static(path.join(__dirname)));
+const PUBLIC_DIR = path.resolve(__dirname);
+const INDEX_FILE = path.join(PUBLIC_DIR, 'index.html');
+const TABLE_FILE = path.join(PUBLIC_DIR, 'mesa.html');
+
+// Rotas explícitas: não dependem do comportamento automático do express.static.
+// Isso evita o "Cannot GET /" no Render quando a rota raiz é requisitada.
+app.get('/', (req, res) => res.sendFile(INDEX_FILE));
+app.get('/index.html', (req, res) => res.sendFile(INDEX_FILE));
+app.get('/mesa.html', (req, res) => res.sendFile(TABLE_FILE));
+
+// Assets/arquivos restantes do projeto.
+app.use(express.static(PUBLIC_DIR, { index: false, fallthrough: true }));
+
+// Diagnóstico simples para confirmar que o serviço correto está no ar.
+app.get('/health', (req, res) => {
+    res.status(200).json({
+        ok: true,
+        index: require('fs').existsSync(INDEX_FILE),
+        mesa: require('fs').existsSync(TABLE_FILE)
+    });
+});
 
 const rooms = {};
 
@@ -143,7 +163,11 @@ io.on('connection', (socket) => {
     });
 });
 
+const fs = require('fs');
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`🚀 Servidor RPG Mesa na porta ${PORT}`);
+    console.log(`📁 Diretório público: ${PUBLIC_DIR}`);
+    console.log(`🏠 index.html: ${fs.existsSync(INDEX_FILE) ? 'OK' : 'AUSENTE'}`);
+    console.log(`🎲 mesa.html: ${fs.existsSync(TABLE_FILE) ? 'OK' : 'AUSENTE'}`);
 });
