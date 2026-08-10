@@ -146,7 +146,11 @@
         .scene-viewport { position:absolute; inset:0; overflow:hidden; z-index:1; touch-action:none; }
         .scene-layer { position:absolute; left:50%; top:50%; width:100%; height:100%; transform-origin:center center; will-change:transform; }
         .center-image { width:100%; height:100%; object-fit:contain; position:absolute; inset:0; z-index:1; user-select:none; -webkit-user-drag:none; }
-        .scene-token-layer { position:absolute; inset:0; z-index:3; pointer-events:none; }
+         .scene-token-layer { position:absolute; inset:0; z-index:3; pointer-events:none; }
+        .scene-token { position:absolute; transform:translate(-50%,-50%); pointer-events:auto; cursor:grab; user-select:none; touch-action:none; border:2px solid rgba(255,255,255,.8); border-radius:50%; box-shadow:0 4px 12px rgba(0,0,0,.55); overflow:hidden; background:#111; }
+        .scene-token:active { cursor:grabbing; }
+        .scene-token img { display:block; width:100%; height:100%; object-fit:cover; pointer-events:none; }
+        .scene-token .token-remove { position:absolute; top:-7px; right:-7px; width:18px; height:18px; border:0; border-radius:50%; background:#b22; color:#fff; font-size:11px; line-height:18px; padding:0; cursor:pointer; }
         .scene-zoom-toolbar { position:absolute; left:12px; top:12px; z-index:30; display:flex; align-items:center; gap:4px; padding:4px; border-radius:8px; background:rgba(0,0,0,.72); backdrop-filter:blur(8px); }
         .scene-zoom-toolbar button { width:28px; height:28px; border:0; border-radius:5px; background:rgba(255,255,255,.08); color:#fff; cursor:pointer; font-size:16px; }
         .scene-zoom-toolbar button:hover { background:var(--accent); }
@@ -318,7 +322,7 @@
 
         /* Grid de atributos 3 colunas */
         .attr-grid-3 {
-            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+            display: grid; grid-template-columns: 1fr; gap: 8px;
         }
         .attr-col h4 {
             font-family: 'Cinzel', serif; font-size: 10px; color: var(--accent);
@@ -327,10 +331,10 @@
 
         /* Info grid */
         .info-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+            display: grid; grid-template-columns: 1fr; gap: 6px;
         }
         .info-grid-3 {
-            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px 8px;
+            display: grid; grid-template-columns: 1fr; gap: 6px;
         }
         .info-field {
             display: flex; align-items: baseline; gap: 4px;
@@ -613,6 +617,7 @@
             <span id="sceneZoomLabel">100%</span>
             <button type="button" onclick="zoomScene(0.1)" title="Aumentar zoom">+</button>
             <button type="button" onclick="resetSceneZoom()" title="Restaurar">↺</button>
+            <button type="button" onclick="openTokenModal()" title="Adicionar token">🧙</button>
         </div>
     </div>
 
@@ -728,6 +733,19 @@
     </div>
 </div>
 
+<div class="modal-overlay" id="tokenModal">
+    <div class="modal-content">
+        <div class="modal-header"><h2>🧙 Adicionar Token</h2><button class="modal-close" onclick="closeTokenModal()">&times;</button></div>
+        <label style="font-size:10px;color:var(--text-dim);">Imagem do token</label>
+        <input type="file" id="tokenFileInput" accept="image/*" style="width:100%;margin-top:6px;">
+        <label style="font-size:10px;color:var(--text-dim);display:block;margin-top:10px;">Ou URL da imagem</label>
+        <input type="text" id="tokenUrlInput" placeholder="https://..." style="width:100%;margin-top:6px;">
+        <label style="font-size:10px;color:var(--text-dim);display:block;margin-top:10px;">Tamanho</label>
+        <input type="number" id="tokenSizeInput" value="64" min="24" max="180" style="width:100%;margin-top:6px;">
+        <button class="modal-btn" onclick="addToken()">Adicionar Token</button>
+    </div>
+</div>
+
 <div class="modal-overlay" id="borderModal">
     <div class="modal-content">
         <div class="modal-header"><h2>🎨 Cor da Borda</h2><button class="modal-close" onclick="closeBorderModal()">&times;</button></div>
@@ -794,6 +812,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initImageModal();
     initBorderModal();
     initCharImgModal();
+    initTokenModal();
     initDifficultySlider();
     setupCenterArea();
     updateRoomDisplay();
@@ -845,6 +864,7 @@ function initSocket() {
     state.socket.on('room-joined', (data) => {
         state.players = data.players || {};
         state.currentImage = data.currentImage;
+        sceneTokens = Array.isArray(data.tokens) ? data.tokens : []; renderTokens();
         if (state.currentImage) {
             document.getElementById('centerImage').src = state.currentImage;
             document.getElementById('centerImage').style.display = 'block';
@@ -882,7 +902,7 @@ function initSocket() {
     });
 
     state.socket.on('dice-rolled', (data) => {
-        showDiceResult(data.results, data.difficulty, data.who, data.diceType);
+        showDiceResult(data.results, data.difficulty, data.who, data.diceType, data.minSuccess || 1, data.criticalCount || 2);
         addRollToHistory(data.who, data.results, data.diceType, data.difficulty);
     });
 
@@ -893,6 +913,8 @@ function initSocket() {
         document.getElementById('centerPlaceholder').style.display = 'none';
         showToast('O Narrador alterou o cenário!', 'info');
     });
+
+    state.socket.on('tokens-updated', (tokens) => { sceneTokens = Array.isArray(tokens) ? tokens : []; renderTokens(); });
 
     state.socket.on('music-played', (data) => {
         if (data.trackIndex !== undefined) playTrack(data.trackIndex, false);
@@ -1363,6 +1385,8 @@ function initCharImgModal() {
     });
 }
 
+function initTokenModal(){ const m=document.getElementById('tokenModal'); if(m)m.addEventListener('click',e=>{if(e.target.classList.contains('modal-overlay'))closeTokenModal();}); }
+
 function setupCenterArea() {
     initSceneZoom();
     const area = document.getElementById('centerArea');
@@ -1597,11 +1621,12 @@ function clearDice(){
 }
 
 function rollDice3D(){
-    if(!diceWorld||diceRolling)return;
+    if(diceRolling)return;
+    if(!diceWorld){ showToast('Motor 3D indisponível','error'); return; }
     const diceType=+document.getElementById('diceType').value;
     const count=Math.max(1,Math.min(10,+document.getElementById('diceCount').value||1));
     const difficulty=Math.max(1,Math.min(diceType,+document.getElementById('difficulty').value||1));
-    const minSuccess=Math.max(1,+document.getElementById('minSuccess').value||1);
+    const minSuccess=Math.max(1,+document.getElementById('minSuccesses').value||1);
     const criticalCount=Math.max(1,+document.getElementById('criticalCount').value||2);
     document.getElementById('difficulty').max=diceType;
     clearDice();diceRolling=true;
@@ -1682,6 +1707,8 @@ function initDifficultySlider(){
 // CENÁRIO — ZOOM REAL NO MAPA E NO TOQUE
 // ═══════════════════════════════════════════════════
 let sceneZoom=1, scenePanX=0, scenePanY=0, scenePointer=null;
+let sceneTokens=[];
+let activeTokenDrag=null;
 function applySceneTransform(){
     const layer=document.getElementById('sceneLayer'); if(!layer)return;
     layer.style.transform=`translate(calc(-50% + ${scenePanX}px), calc(-50% + ${scenePanY}px)) scale(${sceneZoom})`;
@@ -1697,6 +1724,56 @@ function initSceneZoom(){
     vp.addEventListener('pointerup',()=>scenePointer=null);vp.addEventListener('pointercancel',()=>scenePointer=null);
     applySceneTransform();
 }
+
+// ═══════════════════════════════════════════════════
+// TOKENS DO CENÁRIO
+// ═══════════════════════════════════════════════════
+function openTokenModal(){ document.getElementById('tokenModal')?.classList.add('active'); }
+function closeTokenModal(){ document.getElementById('tokenModal')?.classList.remove('active'); }
+function addToken(){
+    const file=document.getElementById('tokenFileInput')?.files?.[0];
+    const urlInput=document.getElementById('tokenUrlInput')?.value.trim();
+    const size=Math.max(24,Math.min(180,parseInt(document.getElementById('tokenSizeInput')?.value,10)||64));
+    const finish=(url)=>{
+        if(!url){showToast('Escolha uma imagem para o token','error');return;}
+        const token={id:'tok-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),url,size,x:50,y:50,owner:state.socketId||'local'};
+        sceneTokens.push(token); renderTokens(); syncTokens(); closeTokenModal();
+        document.getElementById('tokenFileInput').value=''; document.getElementById('tokenUrlInput').value='';
+    };
+    if(file){ const reader=new FileReader(); reader.onload=e=>finish(e.target.result); reader.readAsDataURL(file); }
+    else finish(urlInput);
+}
+function renderTokens(){
+    const layer=document.getElementById('sceneTokenLayer'); if(!layer)return; layer.innerHTML='';
+    sceneTokens.forEach(token=>{
+        const el=document.createElement('div'); el.className='scene-token'; el.dataset.tokenId=token.id;
+        el.style.left=token.x+'%'; el.style.top=token.y+'%'; el.style.width=token.size+'px'; el.style.height=token.size+'px';
+        const img=document.createElement('img'); img.src=token.url; img.alt='Token'; el.appendChild(img);
+        const remove=document.createElement('button'); remove.className='token-remove'; remove.textContent='×'; remove.title='Remover token';
+        remove.addEventListener('pointerdown',e=>e.stopPropagation());
+        remove.addEventListener('click',e=>{e.stopPropagation();sceneTokens=sceneTokens.filter(t=>t.id!==token.id);renderTokens();syncTokens();});
+        el.appendChild(remove);
+        el.addEventListener('pointerdown',e=>startTokenDrag(e,token.id));
+        layer.appendChild(el);
+    });
+}
+function startTokenDrag(e,id){
+    if(e.button!==undefined && e.button!==0)return;
+    const vp=document.getElementById('sceneViewport'); const token=sceneTokens.find(t=>t.id===id); if(!vp||!token)return;
+    e.preventDefault(); e.stopPropagation();
+    activeTokenDrag={id, pointerId:e.pointerId};
+    vp.setPointerCapture?.(e.pointerId);
+    const move=ev=>{
+        if(!activeTokenDrag || ev.pointerId!==activeTokenDrag.pointerId)return;
+        const r=vp.getBoundingClientRect();
+        token.x=Math.max(2,Math.min(98,((ev.clientX-r.left)/r.width)*100));
+        token.y=Math.max(2,Math.min(98,((ev.clientY-r.top)/r.height)*100));
+        renderTokens();
+    };
+    const end=ev=>{ if(ev.pointerId!==activeTokenDrag?.pointerId)return; activeTokenDrag=null; vp.releasePointerCapture?.(ev.pointerId); vp.removeEventListener('pointermove',move); vp.removeEventListener('pointerup',end); vp.removeEventListener('pointercancel',end); syncTokens(); };
+    vp.addEventListener('pointermove',move); vp.addEventListener('pointerup',end); vp.addEventListener('pointercancel',end);
+}
+function syncTokens(){ if(state.socket) state.socket.emit('tokens-update',{room:state.room,tokens:sceneTokens}); }
 
 // ═══════════════════════════════════════════════════
 // SISTEMA DE MARCADORES (DOTS) — HELPERS
