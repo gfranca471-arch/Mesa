@@ -1,7 +1,0 @@
-services:
-  - type: web
-    name: mesa-rpg-online
-    runtime: node
-    buildCommand: npm install
-    startCommand: npm start
-    healthCheckPath: /health
