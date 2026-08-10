@@ -143,18 +143,10 @@
             overflow: hidden; border: 1px solid var(--border);
             min-height: 280px;
         }
-        .scene-viewport { position:absolute; inset:0; overflow:hidden; z-index:1; touch-action:none; }
-        .scene-layer { position:absolute; left:50%; top:50%; width:100%; height:100%; transform-origin:center center; will-change:transform; }
-        .center-image { width:100%; height:100%; object-fit:contain; position:absolute; inset:0; z-index:1; user-select:none; -webkit-user-drag:none; }
-         .scene-token-layer { position:absolute; inset:0; z-index:3; pointer-events:none; }
-        .scene-token { position:absolute; transform:translate(-50%,-50%); pointer-events:auto; cursor:grab; user-select:none; touch-action:none; border:2px solid rgba(255,255,255,.8); border-radius:50%; box-shadow:0 4px 12px rgba(0,0,0,.55); overflow:hidden; background:#111; }
-        .scene-token:active { cursor:grabbing; }
-        .scene-token img { display:block; width:100%; height:100%; object-fit:cover; pointer-events:none; }
-        .scene-token .token-remove { position:absolute; top:-7px; right:-7px; width:18px; height:18px; border:0; border-radius:50%; background:#b22; color:#fff; font-size:11px; line-height:18px; padding:0; cursor:pointer; }
-        .scene-zoom-toolbar { position:absolute; left:12px; top:12px; z-index:30; display:flex; align-items:center; gap:4px; padding:4px; border-radius:8px; background:rgba(0,0,0,.72); backdrop-filter:blur(8px); }
-        .scene-zoom-toolbar button { width:28px; height:28px; border:0; border-radius:5px; background:rgba(255,255,255,.08); color:#fff; cursor:pointer; font-size:16px; }
-        .scene-zoom-toolbar button:hover { background:var(--accent); }
-        .scene-zoom-toolbar span { min-width:42px; text-align:center; font-size:10px; color:#fff; }
+        .center-image {
+            width: 100%; height: 100%; object-fit: contain;
+            position: absolute; top: 0; left: 0; z-index: 1;
+        }
         .center-placeholder {
             width: 100%; height: 100%; display: flex;
             flex-direction: column; align-items: center; justify-content: center;
@@ -206,6 +198,18 @@
             transition: all 0.2s; display: none;
         }
         .change-image-btn:hover { background: var(--accent); border-color: var(--accent); }
+        .scene-tools { position:absolute; left:12px; bottom:12px; z-index:30; display:flex; gap:6px; padding:6px; background:rgba(0,0,0,.68); border:1px solid rgba(255,255,255,.12); border-radius:9px; backdrop-filter:blur(8px); }
+        .scene-tool { width:32px; height:32px; border:1px solid rgba(255,255,255,.12); border-radius:7px; background:rgba(20,20,30,.9); color:#fff; cursor:pointer; font-size:15px; }
+        .scene-tool:hover { background:var(--accent); }
+        .token-layer { position:absolute; inset:0; z-index:25; pointer-events:none; overflow:hidden; }
+        .scene-token { position:absolute; width:58px; height:58px; border-radius:50%; object-fit:cover; transform:translate(-50%,-50%); border:2px solid #fff; box-shadow:0 3px 12px rgba(0,0,0,.7); cursor:grab; pointer-events:auto; user-select:none; touch-action:none; transition:box-shadow .12s, transform .12s; }
+        .scene-token:hover { box-shadow:0 0 0 2px var(--accent), 0 5px 16px rgba(0,0,0,.75); }
+        .scene-token.selected { box-shadow:0 0 0 3px var(--accent), 0 0 18px var(--accent-glow); cursor:grabbing; }
+        .token-remove { position:absolute; width:18px; height:18px; border:0; border-radius:50%; background:#d33; color:#fff; font-size:12px; line-height:18px; cursor:pointer; transform:translate(-50%,-50%); pointer-events:auto; z-index:31; }
+        .token-modal-note { font-size:10px; color:var(--text-dim); margin-top:6px; }
+        .roll-result-card { margin-top:8px; padding:9px 10px; border:1px solid rgba(255,255,255,.1); border-radius:8px; background:rgba(0,0,0,.35); }
+        .roll-result-main { font-size:18px; font-weight:800; color:#fff; }
+        .roll-result-sub { margin-top:3px; font-size:10px; color:var(--text-dim); }
 
         /* SIDEBAR */
         .sidebar {
@@ -322,7 +326,7 @@
 
         /* Grid de atributos 3 colunas */
         .attr-grid-3 {
-            display: grid; grid-template-columns: 1fr; gap: 8px;
+            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
         }
         .attr-col h4 {
             font-family: 'Cinzel', serif; font-size: 10px; color: var(--accent);
@@ -331,10 +335,10 @@
 
         /* Info grid */
         .info-grid {
-            display: grid; grid-template-columns: 1fr; gap: 6px;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
         }
         .info-grid-3 {
-            display: grid; grid-template-columns: 1fr; gap: 6px;
+            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px 8px;
         }
         .info-field {
             display: flex; align-items: baseline; gap: 4px;
@@ -602,23 +606,16 @@
             <div class="icon">🖼️</div>
             <div>Clique para selecionar uma imagem de cenário</div>
         </div>
-        <div class="scene-viewport" id="sceneViewport">
-            <div class="scene-layer" id="sceneLayer">
-                <img class="center-image" id="centerImage" style="display:none;" alt="Cenário">
-                <div class="scene-token-layer" id="sceneTokenLayer"></div>
-            </div>
-        </div>
+        <img class="center-image" id="centerImage" style="display:none;" alt="Cenário">
         <div class="dice-play-area" id="dicePlayArea"></div>
-        <canvas id="diceCanvas" aria-hidden="true"></canvas>
+        <canvas id="diceCanvas"></canvas>
         <div class="dice-result-overlay" id="diceResultOverlay"></div>
-        <button class="change-image-btn" id="changeImageBtn" onclick="openImageModal()">🖼️ Cenário</button>
-        <div class="scene-zoom-toolbar" aria-label="Controles do cenário">
-            <button type="button" onclick="zoomScene(-0.1)" title="Diminuir zoom">−</button>
-            <span id="sceneZoomLabel">100%</span>
-            <button type="button" onclick="zoomScene(0.1)" title="Aumentar zoom">+</button>
-            <button type="button" onclick="resetSceneZoom()" title="Restaurar">↺</button>
-            <button type="button" onclick="openTokenModal()" title="Adicionar token">🧙</button>
+        <div class="token-layer" id="tokenLayer"></div>
+        <div class="scene-tools">
+            <button class="scene-tool" onclick="openImageModal()" title="Cenário">🖼️</button>
+            <button class="scene-tool" onclick="openTokenModal()" title="Adicionar token">🧙</button>
         </div>
+        <button class="change-image-btn" id="changeImageBtn" onclick="openImageModal()">🖼️ Cenário</button>
     </div>
 
     <!-- SIDEBAR -->
@@ -652,16 +649,8 @@
             </div>
             <div class="control-group">
                 <label>Dificuldade</label>
-                <input type="range" class="difficulty-slider" id="difficulty" min="1" max="6" value="6">
+                <input type="range" class="difficulty-slider" id="difficulty" min="1" max="10" value="6">
                 <div class="difficulty-display" id="difficultyDisplay">6+</div>
-            </div>
-            <div class="control-group">
-                <label>Mínimo de sucessos</label>
-                <input type="number" id="minSuccesses" min="0" max="6" value="1">
-            </div>
-            <div class="control-group">
-                <label>Qtd. para crítico</label>
-                <input type="number" id="criticalCount" min="1" max="6" value="2">
             </div>
             <button class="btn-roll" onclick="rollDice3D()">🎲 Rolar</button>
             <div class="roll-history" id="rollHistory"></div>
@@ -733,19 +722,6 @@
     </div>
 </div>
 
-<div class="modal-overlay" id="tokenModal">
-    <div class="modal-content">
-        <div class="modal-header"><h2>🧙 Adicionar Token</h2><button class="modal-close" onclick="closeTokenModal()">&times;</button></div>
-        <label style="font-size:10px;color:var(--text-dim);">Imagem do token</label>
-        <input type="file" id="tokenFileInput" accept="image/*" style="width:100%;margin-top:6px;">
-        <label style="font-size:10px;color:var(--text-dim);display:block;margin-top:10px;">Ou URL da imagem</label>
-        <input type="text" id="tokenUrlInput" placeholder="https://..." style="width:100%;margin-top:6px;">
-        <label style="font-size:10px;color:var(--text-dim);display:block;margin-top:10px;">Tamanho</label>
-        <input type="number" id="tokenSizeInput" value="64" min="24" max="180" style="width:100%;margin-top:6px;">
-        <button class="modal-btn" onclick="addToken()">Adicionar Token</button>
-    </div>
-</div>
-
 <div class="modal-overlay" id="borderModal">
     <div class="modal-content">
         <div class="modal-header"><h2>🎨 Cor da Borda</h2><button class="modal-close" onclick="closeBorderModal()">&times;</button></div>
@@ -761,6 +737,17 @@
         <div class="control-group"><label>URL</label><input type="text" id="charImgUrlInput" placeholder="https://..."></div>
         <div class="control-group"><label>Upload</label><input type="file" id="charImgFileInput" accept="image/*" onchange="handleCharImgFile(event)"></div>
         <button class="modal-btn" onclick="setCharImage()">Definir</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="tokenModal">
+    <div class="modal-content">
+        <div class="modal-header"><h2>🧙 Adicionar Token</h2><button class="modal-close" onclick="closeTokenModal()">&times;</button></div>
+        <div class="control-group"><label>URL da imagem</label><input type="text" id="tokenUrlInput" placeholder="https://..."></div>
+        <div class="control-group"><label>Imagem</label><input type="file" id="tokenFileInput" accept="image/*"></div>
+        <div class="control-group"><label>Tamanho</label><input type="number" id="tokenSizeInput" min="24" max="140" value="58"></div>
+        <button class="modal-btn" onclick="addToken()">Adicionar Token</button>
+        <div class="token-modal-note">Você pode adicionar vários tokens. Clique para selecionar; arraste para mover; clique duas vezes para remover.</div>
     </div>
 </div>
 
@@ -786,7 +773,8 @@ const state = {
     selectedBorderColor: '#e94560',
     borderTargetId: null,
     charImgTargetId: null,
-    sheetTab: 'info'
+    sheetTab: 'info',
+    tokens: [], selectedTokenId: null, tokenDrag: null
 };
 
 const SYSTEMS = {
@@ -812,7 +800,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initImageModal();
     initBorderModal();
     initCharImgModal();
-    initTokenModal();
     initDifficultySlider();
     setupCenterArea();
     updateRoomDisplay();
@@ -864,7 +851,8 @@ function initSocket() {
     state.socket.on('room-joined', (data) => {
         state.players = data.players || {};
         state.currentImage = data.currentImage;
-        sceneTokens = Array.isArray(data.tokens) ? data.tokens : []; renderTokens();
+        state.tokens = data.tokens || [];
+        renderTokens();
         if (state.currentImage) {
             document.getElementById('centerImage').src = state.currentImage;
             document.getElementById('centerImage').style.display = 'block';
@@ -902,7 +890,7 @@ function initSocket() {
     });
 
     state.socket.on('dice-rolled', (data) => {
-        showDiceResult(data.results, data.difficulty, data.who, data.diceType, data.minSuccess || 1, data.criticalCount || 2);
+        showDiceResult(data.results, data.difficulty, data.who, data.diceType);
         addRollToHistory(data.who, data.results, data.diceType, data.difficulty);
     });
 
@@ -914,7 +902,20 @@ function initSocket() {
         showToast('O Narrador alterou o cenário!', 'info');
     });
 
-    state.socket.on('tokens-updated', (tokens) => { sceneTokens = Array.isArray(tokens) ? tokens : []; renderTokens(); });
+    state.socket.on('token-added', (token) => {
+        if (!state.tokens.find(t => t.id === token.id)) state.tokens.push(token);
+        renderTokens();
+    });
+    state.socket.on('token-moved', (token) => {
+        const i = state.tokens.findIndex(t => t.id === token.id);
+        if (i >= 0) state.tokens[i] = token; else state.tokens.push(token);
+        renderTokens();
+    });
+    state.socket.on('token-removed', (id) => {
+        state.tokens = state.tokens.filter(t => t.id !== id);
+        if (state.selectedTokenId === id) state.selectedTokenId = null;
+        renderTokens();
+    });
 
     state.socket.on('music-played', (data) => {
         if (data.trackIndex !== undefined) playTrack(data.trackIndex, false);
@@ -1385,14 +1386,11 @@ function initCharImgModal() {
     });
 }
 
-function initTokenModal(){ const m=document.getElementById('tokenModal'); if(m)m.addEventListener('click',e=>{if(e.target.classList.contains('modal-overlay'))closeTokenModal();}); }
-
 function setupCenterArea() {
-    initSceneZoom();
     const area = document.getElementById('centerArea');
     area.addEventListener('click', (e) => {
-        if (e.target.closest('.scene-zoom-toolbar') || e.target.closest('.change-image-btn') || e.target.closest('.dice-result-overlay') || e.target.closest('.dice-play-area')) return;
-        // O mapa não abre mais o seletor ao clicar/tocar nele.
+        if (e.target.id === 'diceCanvas' || e.target.closest('.dice-result-overlay') || e.target.closest('.dice-play-area')) return;
+        if (state.role === 'narrador') openImageModal();
     });
 }
 function openImageModal() {
@@ -1425,355 +1423,306 @@ function initImageModal() {
 }
 
 // ═══════════════════════════════════════════════════
-// DADOS 3D — CONSTRUÇÃO FÍSICA DOS POLIEDROS
-// Refeito do zero: cada dado possui geometria facetada real,
-// materiais/números por face e a mesma malha usada na colisão.
+// DADOS 3D — THREE.JS + CANNON.JS
 // ═══════════════════════════════════════════════════
-let diceScene, diceCamera, diceRenderer, diceWorld;
-let diceBodies = [], diceMeshes = [], diceMeta = [];
-let diceAnimationId, diceRolling = false, diceRollTimer = null;
-let diceMaterialsCache = new Map();
+let diceScene, diceCamera, diceRenderer, diceWorld, diceBodies = [], diceMeshes = [];
+let diceAnimationId;
 
-const DICE_SPECS = {
-    4:   { radius: 4.8, label:'D4' },
-    6:   { radius: 4.9, label:'D6' },
-    8:   { radius: 4.8, label:'D8' },
-    10:  { radius: 5.0, label:'D10' },
-    12:  { radius: 5.0, label:'D12' },
-    20:  { radius: 5.1, label:'D20' },
-    100: { radius: 5.0, label:'D100' }
-};
+function initDice3D() {
+    const canvas = document.getElementById('diceCanvas');
+    resizeDiceCanvas();
 
-function initDice3D(){
-    const canvas=document.getElementById('diceCanvas');
-    if(!canvas || !window.THREE || !window.CANNON) return;
-    try{
-        diceScene=new THREE.Scene();
-        diceCamera=new THREE.PerspectiveCamera(38,1,.1,300);
-        diceCamera.position.set(0,30,42); diceCamera.lookAt(0,0,0);
-        diceRenderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true});
-        diceRenderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
-        diceRenderer.shadowMap.enabled=true;
-        diceScene.add(new THREE.HemisphereLight(0xffffff,0x202020,1.15));
-        const key=new THREE.DirectionalLight(0xffffff,1.45); key.position.set(14,28,18); key.castShadow=true; diceScene.add(key);
-        const rim=new THREE.DirectionalLight(0x8aa8ff,.45); rim.position.set(-18,10,-20); diceScene.add(rim);
+    diceScene = new THREE.Scene();
+    diceCamera = new THREE.PerspectiveCamera(50, canvas.width / canvas.height, 0.1, 100);
+    diceCamera.position.set(0, 45, 55);
+    diceCamera.lookAt(0, 0, 0);
 
-        diceWorld=new CANNON.World();
-        diceWorld.gravity.set(0,-22,0);
-        diceWorld.broadphase=new CANNON.NaiveBroadphase();
-        diceWorld.solver.iterations=18;
-        const groundMat=new CANNON.Material('felt');
-        const diceMat=new CANNON.Material('dice');
-        diceWorld.addContactMaterial(new CANNON.ContactMaterial(groundMat,diceMat,{friction:.42,restitution:.34}));
-        const ground=new CANNON.Body({mass:0,material:groundMat});
-        ground.addShape(new CANNON.Plane());
-        ground.quaternion.setFromAxisAngle(new CANNON.Vec3(1,0,0),-Math.PI/2);
-        ground.userData={diceGround:true}; diceWorld.addBody(ground);
-        resizeDiceCanvas();
-        rebuildDiceWalls();
-        animateDice();
-        window.addEventListener('resize',()=>{resizeDiceCanvas();rebuildDiceWalls();});
-    }catch(err){ console.error('Falha ao iniciar dados 3D:',err); }
+    diceRenderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+    diceRenderer.setSize(canvas.width, canvas.height);
+    diceRenderer.setClearColor(0x000000, 0);
+    diceRenderer.shadowMap.enabled = true;
+
+    const ambient = new THREE.AmbientLight(0xffffff, 0.45);
+    diceScene.add(ambient);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
+    dirLight.position.set(4, 10, 6); dirLight.castShadow = true;
+    diceScene.add(dirLight);
+    const pointLight = new THREE.PointLight(0xe94560, 0.4, 18);
+    pointLight.position.set(-4, 6, -4);
+    diceScene.add(pointLight);
+
+    diceWorld = new CANNON.World();
+    diceWorld.gravity.set(0, -18, 0);
+    diceWorld.broadphase = new CANNON.NaiveBroadphase();
+    diceWorld.solver.iterations = 12;
+
+    const groundMatC = new CANNON.Material();
+    const diceMatC = new CANNON.Material();
+    const contactMat = new CANNON.ContactMaterial(groundMatC, diceMatC, { friction: 0.4, restitution: 0.4 });
+    diceWorld.addContactMaterial(contactMat);
+
+    const groundBody = new CANNON.Body({ mass: 0, material: groundMatC });
+    groundBody.addShape(new CANNON.Plane());
+    groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1,0,0), -Math.PI/2);
+    diceWorld.addBody(groundBody);
+
+    updateDiceWalls(groundMatC);
+    animateDice();
+    window.addEventListener('resize', () => { resizeDiceCanvas(); updateDiceWalls(groundMatC); });
 }
 
-function resizeDiceCanvas(){
-    const canvas=document.getElementById('diceCanvas'); if(!canvas)return;
-    const parent=canvas.parentElement;
-    const w=Math.max(280,parent.clientWidth-8), h=Math.max(180,parent.clientHeight-8);
-    canvas.style.width=w+'px'; canvas.style.height=h+'px';
-    const dpr=Math.min(window.devicePixelRatio||1,2);
-    canvas.width=Math.floor(w*dpr); canvas.height=Math.floor(h*dpr);
-    if(diceCamera){diceCamera.aspect=w/h;diceCamera.updateProjectionMatrix();}
-    if(diceRenderer)diceRenderer.setSize(w,h,false);
+function resizeDiceCanvas() {
+    const canvas = document.getElementById('diceCanvas');
+    const parent = canvas.parentElement;
+    const w = parent.clientWidth - 20;
+    const h = parent.clientHeight - 20;
+    canvas.width = w; canvas.height = h;
+    if (diceCamera) { diceCamera.aspect = w / h; diceCamera.updateProjectionMatrix(); }
+    if (diceRenderer) diceRenderer.setSize(w, h);
 }
 
-function rebuildDiceWalls(){
-    if(!diceWorld)return;
-    diceWorld.bodies.filter(b=>b.userData&&b.userData.diceWall).forEach(b=>diceWorld.removeBody(b));
-    const area=document.getElementById('dicePlayArea');
-    const w=Math.max(16,(area?.clientWidth||600)/34), d=Math.max(10,(area?.clientHeight||340)/34);
-    const mat=diceWorld.bodies.find(b=>b.userData?.diceGround)?.material||new CANNON.Material('felt');
-    [
-        {p:[-w,0,0],q:[0,Math.PI/2,0]}, {p:[w,0,0],q:[0,-Math.PI/2,0]},
-        {p:[0,0,-d],q:[0,0,0]}, {p:[0,0,d],q:[0,Math.PI,0]}
-    ].forEach(item=>{
-        const b=new CANNON.Body({mass:0,material:mat}); b.addShape(new CANNON.Plane());
-        b.position.set(...item.p); b.quaternion.setFromEuler(...item.q); b.userData={diceWall:true}; diceWorld.addBody(b);
+function updateDiceWalls(material) {
+    const canvas = document.getElementById('diceCanvas');
+    const w = canvas.width;
+    const h = canvas.height;
+    const aspect = w / h;
+    const fov = 50 * (Math.PI / 180);
+    const dist = 55;
+    const visibleHeight = 2 * Math.tan(fov / 2) * dist;
+    const visibleWidth = visibleHeight * aspect;
+    const halfW = visibleWidth * 0.4;
+    const halfH = visibleHeight * 0.35;
+    const floorY = -14.0;
+
+    const ground = diceWorld.bodies.find(b => b.mass === 0 && b.shapes[0] instanceof CANNON.Plane);
+    if (ground) ground.position.set(0, floorY, 0);
+
+    const walls = [
+        { pos: [-halfW, 0, 0], rot: [0, Math.PI/2, 0] },
+        { pos: [halfW, 0, 0], rot: [0, -Math.PI/2, 0] },
+        { pos: [0, 0, -halfH], rot: [0, 0, 0] },
+        { pos: [0, 0, halfH], rot: [0, Math.PI, 0] }
+    ];
+    walls.forEach(w => {
+        const body = new CANNON.Body({ mass: 0, material });
+        body.addShape(new CANNON.Plane());
+        body.position.set(w.pos[0], floorY, w.pos[2]);
+        body.quaternion.setFromAxisAngle(new CANNON.Vec3(0,1,0), w.rot[1]);
+        diceWorld.addBody(body);
     });
 }
 
-// Pentagonal trapezohedron (D10): 12 vertices, 10 congruent kite faces.
-// Coordinates follow the standard pentagonal-trapezohedron construction.
-function makeD10Geometry(){
-    const c0=(Math.sqrt(5)-1)/4, c1=(Math.sqrt(5)+1)/4, c2=(Math.sqrt(5)+3)/4;
-    const V=[
-        [0,c0,c1],[0,c0,-c1],[0,-c0,c1],[0,-c0,-c1],
-        [.5,.5,.5],[.5,.5,-.5],[-.5,-.5,.5],[-.5,-.5,-.5],
-        [c2,-c1,0],[-c2,c1,0],[c0,c1,0],[-c0,-c1,0]
-    ];
-    const F=[
-        [8,2,6,11],[8,11,7,3],[8,3,1,5],[8,5,10,4],[8,4,0,2],
-        [9,0,4,10],[9,10,5,1],[9,1,3,7],[9,7,11,6],[9,6,2,0]
-    ];
-    const scale=4.8;
-    const positions=[],uvs=[],indices=[];
-    F.forEach((face,fi)=>{
-        const base=positions.length/3;
-        const uv=[[.08,.08],[.92,.08],[.92,.92],[.08,.92]];
-        face.forEach((vi,j)=>{positions.push(V[vi][0]*scale,V[vi][1]*scale,V[vi][2]*scale);uvs.push(...uv[j]);});
-        indices.push(base,base+1,base+2,base,base+2,base+3);
-    });
-    const geo=new THREE.BufferGeometry();
-    geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
-    geo.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
-    geo.setIndex(indices); geo.computeVertexNormals();
-    for(let i=0;i<10;i++)geo.addGroup(i*6,6,i);
+function createD10Geometry() {
+    const geo = new THREE.BufferGeometry();
+    const r1 = 5.7, r2 = 6.0, h1 = 4.1, h2 = -4.1, topY = 7.6, botY = -7.6;
+    const verts = [];
+    verts.push(0, topY, 0);
+    for (let i = 0; i < 5; i++) { const a = (i * 2 * Math.PI / 5) - Math.PI / 10; verts.push(Math.cos(a)*r1, h1, Math.sin(a)*r1); }
+    for (let i = 0; i < 5; i++) { const a = (i * 2 * Math.PI / 5) + Math.PI / 10; verts.push(Math.cos(a)*r2, h2, Math.sin(a)*r2); }
+    verts.push(0, botY, 0);
+    const indices = [];
+    for (let i = 0; i < 5; i++) {
+        const next = (i+1)%5;
+        indices.push(0, 1+i, 1+next, 1+i, 6+i, 1+next, 1+next, 6+i, 6+((i+1)%5));
+    }
+    for (let i = 0; i < 5; i++) { const next = (i+1)%5; indices.push(11, 6+next, 6+i); }
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
     return geo;
 }
 
-function createDiceGeometry(sides){
-    switch(+sides){
-        case 4:return new THREE.TetrahedronGeometry(4.8,0);
-        case 6:return new THREE.BoxGeometry(7.8,7.8,7.8);
-        case 8:return new THREE.OctahedronGeometry(4.8,0);
-        case 10:return makeD10Geometry();
-        case 12:return new THREE.DodecahedronGeometry(5.0,0);
-        case 20:return new THREE.IcosahedronGeometry(5.1,0);
-        case 100:return makeD10Geometry();
-        default:return new THREE.D20Geometry?new THREE.D20Geometry(5):new THREE.IcosahedronGeometry(5.1,0);
+function createDiceGeometry(sides) {
+    const s = parseInt(sides);
+    switch (s) {
+        case 4: return new THREE.TetrahedronGeometry(7.0, 0);
+        case 6: return new THREE.BoxGeometry(8.5, 8.5, 8.5);
+        case 8: return new THREE.OctahedronGeometry(8.0, 0);
+        case 10: return createD10Geometry();
+        case 12: return new THREE.DodecahedronGeometry(7.2, 0);
+        case 20: return new THREE.IcosahedronGeometry(8.2, 0);
+        case 100: return createD10Geometry();
+        default: return new THREE.BoxGeometry(0.85, 0.85, 0.85);
     }
 }
 
-function faceCountFor(sides){return +sides===100?10:+sides;}
-
-function diceColor(sides){
-    if(state.system==='vampiro')return 0x6e101b;
-    if(state.system==='dnd')return 0x174a78;
-    if(state.system==='lobisomem')return 0x5a3925;
-    return 0x292b38;
-}
-
-function makeFaceTexture(label,base){
-    const c=document.createElement('canvas'); c.width=512;c.height=512;
-    const ctx=c.getContext('2d');
-    const rr=(base>>16)&255,gg=(base>>8)&255,bb=base&255;
-    ctx.fillStyle=`rgb(${rr},${gg},${bb})`;ctx.fillRect(0,0,512,512);
-    const grad=ctx.createLinearGradient(0,0,512,512);grad.addColorStop(0,'rgba(255,255,255,.20)');grad.addColorStop(.45,'rgba(255,255,255,.02)');grad.addColorStop(1,'rgba(0,0,0,.25)');ctx.fillStyle=grad;ctx.fillRect(0,0,512,512);
-    ctx.strokeStyle='rgba(255,255,255,.42)';ctx.lineWidth=8;ctx.strokeRect(7,7,498,498);
-    ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`900 ${String(label).length>2?150:205}px Arial Black, Arial`;
-    ctx.lineJoin='round';ctx.strokeStyle='rgba(0,0,0,.85)';ctx.lineWidth=18;ctx.strokeText(String(label),256,270);
-    ctx.fillStyle='#fff';ctx.fillText(String(label),256,270);
-    return new THREE.CanvasTexture(c);
-}
-
-function faceMaterials(sides){
-    const key=`${sides}-${state.system}`; if(diceMaterialsCache.has(key))return diceMaterialsCache.get(key);
-    const base=diceColor(sides), count=faceCountFor(sides), arr=[];
-    for(let i=1;i<=count;i++){
-        const value=sides===100?i*10:i;
-        arr.push(new THREE.MeshPhysicalMaterial({
-            map:makeFaceTexture(value,base),roughness:.28,metalness:.08,clearcoat:.35,clearcoatRoughness:.2,flatShading:true
-        }));
+function createDiceCannonShape(sides) {
+    const s = parseInt(sides);
+    switch (s) {
+        case 4: return new CANNON.Sphere(7.0);
+        case 6: return new CANNON.Box(new CANNON.Vec3(4.25, 4.25, 4.25));
+        case 8: return new CANNON.Sphere(8.0);
+        case 10: return new CANNON.Sphere(7.0);
+        case 12: return new CANNON.Sphere(7.2);
+        case 20: return new CANNON.Sphere(8.2);
+        case 100: return new CANNON.Sphere(7.6);
+        default: return new CANNON.Box(new CANNON.Vec3(0.425, 0.425, 0.425));
     }
-    diceMaterialsCache.set(key,arr); return arr;
 }
 
-function assignFaceMaterials(mesh,sides){
-    const geo=mesh.geometry; geo.clearGroups();
-    const index=geo.index;
-    if(+sides===10||+sides===100){for(let i=0;i<10;i++)geo.addGroup(i*6,6,i);}
-    else if(+sides===6){for(let i=0;i<6;i++)geo.addGroup(i*6,6,i);}
-    else if(index){
-        // D4/D8/D20 are triangular faces: one material per triangle.
-        if(+sides===4||+sides===8||+sides===20){
-            const n=index.count/3; for(let i=0;i<n;i++)geo.addGroup(i*3,3,i%sides);
-        }else{
-            // D12: collect coplanar triangles into 12 pentagonal face groups.
-            const pos=geo.attributes.position, groups=[];
-            for(let i=0;i<index.count;i+=3){
-                const ia=index.getX(i),ib=index.getX(i+1),ic=index.getX(i+2);
-                const a=new THREE.Vector3().fromBufferAttribute(pos,ia),b=new THREE.Vector3().fromBufferAttribute(pos,ib),c=new THREE.Vector3().fromBufferAttribute(pos,ic);
-                const n=new THREE.Vector3().subVectors(b,a).cross(new THREE.Vector3().subVectors(c,a)).normalize();
-                let g=groups.find(x=>x.n.dot(n)>.999); if(!g){g={n:n.clone(),tris:[]};groups.push(g);} g.tris.push(i);
-            }
-            groups.slice(0,12).forEach((g,fi)=>g.tris.forEach(start=>geo.addGroup(start,3,fi)));
-        }
-    }
-    mesh.material=faceMaterials(sides);
+function getDiceColor(sides, system) {
+    if (system === 'vampiro' || sides == 10) return 0x7b2346;
+    if (system === 'dnd' || sides == 20) return 0xb8860b;
+    if (system === 'lobisomem') return 0x8b4513;
+    return 0x444444;
 }
 
-function geometryToCannon(geo){
-    const pos=geo.attributes.position, vertices=[],map=new Map(),unique=[],remap=[];
-    for(let i=0;i<pos.count;i++){
-        const v=new CANNON.Vec3(pos.getX(i),pos.getY(i),pos.getZ(i));
-        vertices.push(v); const k=`${v.x.toFixed(6)},${v.y.toFixed(6)},${v.z.toFixed(6)}`;
-        if(!map.has(k)){map.set(k,unique.length);unique.push(v);} remap[i]=map.get(k);
-    }
-    const idx=geo.index?Array.from(geo.index.array):Array.from({length:pos.count},(_,i)=>i),faces=[];
-    for(let i=0;i<idx.length;i+=3){const f=[remap[idx[i]],remap[idx[i+1]],remap[idx[i+2]]];if(new Set(f).size===3)faces.push(f);}
-    return new CANNON.ConvexPolyhedron(unique,faces);
+function createNumberTexture(number, colorHex, sides) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    const r = (colorHex >> 16) & 0xff;
+    const g = (colorHex >> 8) & 0xff;
+    const b = colorHex & 0xff;
+
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(0, 0, 512, 512);
+
+    const grad = ctx.createRadialGradient(256, 256, 40, 256, 256, 256);
+    grad.addColorStop(0, `rgba(255,255,255,0.12)`);
+    grad.addColorStop(1, `rgba(0,0,0,0.3)`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 512, 512);
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 10;
+    ctx.strokeRect(12, 12, 488, 488);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 240px Arial, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.9)';
+    ctx.shadowBlur = 30;
+    ctx.fillText(number.toString(), 256, 236);
+
+    ctx.font = 'bold 44px Arial, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.shadowBlur = 12;
+    ctx.fillText('D' + sides, 256, 400);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.needsUpdate = true;
+    return tex;
 }
 
-function clearDice(){
-    if(diceRollTimer){clearTimeout(diceRollTimer);diceRollTimer=null;}
-    diceBodies.forEach(b=>diceWorld?.removeBody(b)); diceMeshes.forEach(m=>diceScene?.remove(m));
-    diceBodies=[];diceMeshes=[];diceMeta=[];
-}
-
-function rollDice3D(){
-    if(diceRolling)return;
-    if(!diceWorld){ showToast('Motor 3D indisponível','error'); return; }
-    const diceType=+document.getElementById('diceType').value;
-    const count=Math.max(1,Math.min(10,+document.getElementById('diceCount').value||1));
-    const difficulty=Math.max(1,Math.min(diceType,+document.getElementById('difficulty').value||1));
-    const minSuccess=Math.max(1,+document.getElementById('minSuccesses').value||1);
-    const criticalCount=Math.max(1,+document.getElementById('criticalCount').value||2);
-    document.getElementById('difficulty').max=diceType;
-    clearDice();diceRolling=true;
-    const area=document.getElementById('dicePlayArea'); const w=Math.max(12,(area.clientWidth||600)/34),d=Math.max(8,(area.clientHeight||340)/34);
-    for(let i=0;i<count;i++){
-        const geo=createDiceGeometry(diceType), mesh=new THREE.Mesh(geo,faceMaterials(diceType));
-        assignFaceMaterials(mesh,diceType);mesh.castShadow=true;mesh.receiveShadow=true;diceScene.add(mesh);diceMeshes.push(mesh);
-        const shape=geometryToCannon(geo), mat=diceWorld.bodies.find(b=>b.material?.name==='dice')?.material||new CANNON.Material('dice');
-        const body=new CANNON.Body({mass:1,material:mat,linearDamping:.22,angularDamping:.16}); body.addShape(shape);
-        body.position.set((Math.random()-.5)*w*.72,8+Math.random()*8,(Math.random()-.5)*d*.72);
-        body.quaternion.setFromEuler(Math.random()*Math.PI,Math.random()*Math.PI,Math.random()*Math.PI);
-        body.velocity.set((Math.random()-.5)*10,5+Math.random()*7,(Math.random()-.5)*10);
-        body.angularVelocity.set((Math.random()-.5)*16,(Math.random()-.5)*16,(Math.random()-.5)*16);
-        diceWorld.addBody(body);diceBodies.push(body);diceMeta.push({sides:diceType});
-    }
-    diceRollTimer=setTimeout(()=>finishDiceRoll(difficulty,minSuccess,criticalCount),3600+count*220);
-}
-
-function readTopFace(mesh,sides){
-    // Physical result: choose the numbered face whose outward normal is most aligned with world up.
-    const geo=mesh.geometry, pos=geo.attributes.position, index=geo.index;
-    const candidates=[];
-    if(+sides===10||+sides===100){
-        for(let g=0;g<10;g++){const start=g*6;const ia=index.getX(start),ib=index.getX(start+1),ic=index.getX(start+2);candidates.push({n:faceNormalWorld(mesh,pos,ia,ib,ic),value:sides===100?(g+1)*10:g+1});}
-    }else if(+sides===6){
-        for(let g=0;g<6;g++){const start=g*6;const ia=index.getX(start),ib=index.getX(start+1),ic=index.getX(start+2);candidates.push({n:faceNormalWorld(mesh,pos,ia,ib,ic),value:g+1});}
-    }else{
-        const faceN=+sides;
-        for(let g=0;g<faceN;g++){
-            const start=g*3; if(start+2>=index.count)break;
-            const ia=index.getX(start),ib=index.getX(start+1),ic=index.getX(start+2);candidates.push({n:faceNormalWorld(mesh,pos,ia,ib,ic),value:g+1});
-        }
-    }
-    candidates.sort((a,b)=>b.n.y-a.n.y); return candidates[0]?.value||1;
-}
-function faceNormalWorld(mesh,pos,ia,ib,ic){
-    const a=new THREE.Vector3().fromBufferAttribute(pos,ia),b=new THREE.Vector3().fromBufferAttribute(pos,ib),c=new THREE.Vector3().fromBufferAttribute(pos,ic);
-    const n=new THREE.Vector3().subVectors(b,a).cross(new THREE.Vector3().subVectors(c,a)).normalize(); return n.applyQuaternion(mesh.quaternion).normalize();
-}
-
-function finishDice(difficulty,minSuccess,criticalCount){
-    if(!diceRolling)return;diceRolling=false;
-    const results=diceBodies.map((b,i)=>readTopFace(diceMeshes[i],diceMeta[i].sides));
-    const type=diceMeta[0]?.sides||20;
-    showDiceResult(results,difficulty,state.name,type,minSuccess,criticalCount);
-    addRollToHistory(state.name,results,type,difficulty);
-    if(state.socket)state.socket.emit('roll-dice',{room:state.room,results,difficulty,minSuccess,criticalCount,diceType:type,who:state.name});
-}
-
-function animateDice(){
-    diceAnimationId=requestAnimationFrame(animateDice);
-    if(!diceWorld||!diceRenderer)return;
-    diceWorld.step(1/60);
-    diceBodies.forEach((b,i)=>{if(diceMeshes[i]){diceMeshes[i].position.copy(b.position);diceMeshes[i].quaternion.copy(b.quaternion);}});
-    diceRenderer.render(diceScene,diceCamera);
-}
-
-function showDiceResult(results,difficulty,who,diceType,minSuccess=1,criticalCount=2){
-    const overlay=document.getElementById('diceResultOverlay');if(!overlay)return;overlay.innerHTML='';
-    const crits=results.filter(r=>r===diceType).length, successes=results.filter(r=>r>=difficulty).length;
-    results.forEach(r=>{const pill=document.createElement('div');pill.className='dice-result-pill '+(r>=difficulty?'pill-success':'pill-fail');if(r===diceType)pill.classList.add('pill-crit');pill.innerHTML=`🎲 <b>${r}</b>`;overlay.appendChild(pill);});
-    const title=document.createElement('div');title.className='dice-result-pill';title.innerHTML=`<b>${successes} SUCESSO${successes===1?'':'S'}</b> · ${successes>=minSuccess?'✓ ÊXITO':'✕ FALHA'}${crits>=criticalCount?' · ⚡ CRÍTICO':''}`;overlay.appendChild(title);
-}
-
-function addRollToHistory(who,results,diceType,difficulty){
-    const history=document.getElementById('diceHistory');if(!history)return;const item=document.createElement('div');item.className='history-item';
-    const successes=results.filter(r=>r>=difficulty).length;item.innerHTML=`<span class="who">${escapeHtml(who)}</span> <span class="res">${results.length}D${diceType}: [${results.join(', ')}] → ${successes} sucesso(s)</span>`;
-    history.insertBefore(item,history.firstChild);if(history.children.length>8)history.lastChild.remove();
-}
-
-function initDifficultySlider(){
-    const sel=document.getElementById('diceType'),slider=document.getElementById('difficulty'),display=document.getElementById('difficultyDisplay');
-    const sync=()=>{const max=+sel.value;slider.max=max;if(+slider.value>max)slider.value=max;display.textContent=slider.value+'+';};
-    sel.addEventListener('change',sync);slider.addEventListener('input',()=>display.textContent=slider.value+'+');sync();
-}
-
-// ═══════════════════════════════════════════════════
-// CENÁRIO — ZOOM REAL NO MAPA E NO TOQUE
-// ═══════════════════════════════════════════════════
-let sceneZoom=1, scenePanX=0, scenePanY=0, scenePointer=null;
-let sceneTokens=[];
-let activeTokenDrag=null;
-function applySceneTransform(){
-    const layer=document.getElementById('sceneLayer'); if(!layer)return;
-    layer.style.transform=`translate(calc(-50% + ${scenePanX}px), calc(-50% + ${scenePanY}px)) scale(${sceneZoom})`;
-    const label=document.getElementById('sceneZoomLabel');if(label)label.textContent=Math.round(sceneZoom*100)+'%';
-}
-function zoomScene(delta){sceneZoom=Math.max(.5,Math.min(3,sceneZoom+delta));applySceneTransform();}
-function resetSceneZoom(){sceneZoom=1;scenePanX=0;scenePanY=0;applySceneTransform();}
-function initSceneZoom(){
-    const vp=document.getElementById('sceneViewport'); if(!vp)return;
-    vp.addEventListener('wheel',e=>{e.preventDefault();zoomScene(e.deltaY<0?.1:-.1);},{passive:false});
-    vp.addEventListener('pointerdown',e=>{if(e.target.closest('.scene-zoom-toolbar'))return;scenePointer={x:e.clientX,y:e.clientY,px:scenePanX,py:scenePanY};vp.setPointerCapture(e.pointerId);});
-    vp.addEventListener('pointermove',e=>{if(!scenePointer)return;scenePanX=scenePointer.px+(e.clientX-scenePointer.x);scenePanY=scenePointer.py+(e.clientY-scenePointer.y);applySceneTransform();});
-    vp.addEventListener('pointerup',()=>scenePointer=null);vp.addEventListener('pointercancel',()=>scenePointer=null);
-    applySceneTransform();
-}
-
-// ═══════════════════════════════════════════════════
-// TOKENS DO CENÁRIO
-// ═══════════════════════════════════════════════════
-function openTokenModal(){ document.getElementById('tokenModal')?.classList.add('active'); }
-function closeTokenModal(){ document.getElementById('tokenModal')?.classList.remove('active'); }
-function addToken(){
-    const file=document.getElementById('tokenFileInput')?.files?.[0];
-    const urlInput=document.getElementById('tokenUrlInput')?.value.trim();
-    const size=Math.max(24,Math.min(180,parseInt(document.getElementById('tokenSizeInput')?.value,10)||64));
-    const finish=(url)=>{
-        if(!url){showToast('Escolha uma imagem para o token','error');return;}
-        const token={id:'tok-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),url,size,x:50,y:50,owner:state.socketId||'local'};
-        sceneTokens.push(token); renderTokens(); syncTokens(); closeTokenModal();
-        document.getElementById('tokenFileInput').value=''; document.getElementById('tokenUrlInput').value='';
-    };
-    if(file){ const reader=new FileReader(); reader.onload=e=>finish(e.target.result); reader.readAsDataURL(file); }
-    else finish(urlInput);
-}
-function renderTokens(){
-    const layer=document.getElementById('sceneTokenLayer'); if(!layer)return; layer.innerHTML='';
-    sceneTokens.forEach(token=>{
-        const el=document.createElement('div'); el.className='scene-token'; el.dataset.tokenId=token.id;
-        el.style.left=token.x+'%'; el.style.top=token.y+'%'; el.style.width=token.size+'px'; el.style.height=token.size+'px';
-        const img=document.createElement('img'); img.src=token.url; img.alt='Token'; el.appendChild(img);
-        const remove=document.createElement('button'); remove.className='token-remove'; remove.textContent='×'; remove.title='Remover token';
-        remove.addEventListener('pointerdown',e=>e.stopPropagation());
-        remove.addEventListener('click',e=>{e.stopPropagation();sceneTokens=sceneTokens.filter(t=>t.id!==token.id);renderTokens();syncTokens();});
-        el.appendChild(remove);
-        el.addEventListener('pointerdown',e=>startTokenDrag(e,token.id));
-        layer.appendChild(el);
+function createDiceMaterials(number, sides, system) {
+    const color = getDiceColor(sides, system);
+    const tex = createNumberTexture(number, color, sides);
+    return new THREE.MeshStandardMaterial({
+        map: tex, metalness: 0.2, roughness: 0.35,
+        emissive: color, emissiveIntensity: 0.06
     });
 }
-function startTokenDrag(e,id){
-    if(e.button!==undefined && e.button!==0)return;
-    const vp=document.getElementById('sceneViewport'); const token=sceneTokens.find(t=>t.id===id); if(!vp||!token)return;
-    e.preventDefault(); e.stopPropagation();
-    activeTokenDrag={id, pointerId:e.pointerId};
-    vp.setPointerCapture?.(e.pointerId);
-    const move=ev=>{
-        if(!activeTokenDrag || ev.pointerId!==activeTokenDrag.pointerId)return;
-        const r=vp.getBoundingClientRect();
-        token.x=Math.max(2,Math.min(98,((ev.clientX-r.left)/r.width)*100));
-        token.y=Math.max(2,Math.min(98,((ev.clientY-r.top)/r.height)*100));
-        renderTokens();
-    };
-    const end=ev=>{ if(ev.pointerId!==activeTokenDrag?.pointerId)return; activeTokenDrag=null; vp.releasePointerCapture?.(ev.pointerId); vp.removeEventListener('pointermove',move); vp.removeEventListener('pointerup',end); vp.removeEventListener('pointercancel',end); syncTokens(); };
-    vp.addEventListener('pointermove',move); vp.addEventListener('pointerup',end); vp.addEventListener('pointercancel',end);
+
+function rollDice3D() {
+    const diceType = parseInt(document.getElementById('diceType').value);
+    const diceCount = parseInt(document.getElementById('diceCount').value);
+    const difficulty = parseInt(document.getElementById('difficulty').value);
+
+    diceBodies.forEach(b => { if (diceWorld) diceWorld.removeBody(b); });
+    diceMeshes.forEach(m => diceScene.remove(m));
+    diceBodies = []; diceMeshes = [];
+
+    const results = [];
+    const system = state.system;
+    const canvas = document.getElementById('diceCanvas');
+    const aspect = canvas.width / canvas.height;
+    const fov = 50 * (Math.PI / 180);
+    const dist = 12;
+    const visibleHeight = 2 * Math.tan(fov / 2) * dist;
+    const visibleWidth = visibleHeight * aspect;
+    const safeW = visibleWidth * 0.25;
+    const safeH = visibleHeight * 0.20;
+
+    for (let i = 0; i < diceCount; i++) {
+        const result = Math.floor(Math.random() * diceType) + 1;
+        results.push(result);
+
+        const geo = createDiceGeometry(diceType);
+        const mat = createDiceMaterials(result, diceType, system);
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.castShadow = true; mesh.receiveShadow = true;
+
+        const x = (Math.random() - 0.5) * safeW * 2;
+        const z = (Math.random() - 0.5) * safeH * 2;
+        mesh.position.set(x, 55 + i * 12, z);
+        diceScene.add(mesh); diceMeshes.push(mesh);
+
+        const shape = createDiceCannonShape(diceType);
+        const body = new CANNON.Body({ mass: 1 });
+        body.addShape(shape);
+        body.position.set(x, 55 + i * 12, z);
+        body.velocity.set((Math.random()-0.5)*10, -5, (Math.random()-0.5)*8);
+        body.angularVelocity.set(Math.random()*20, Math.random()*20, Math.random()*20);
+        body.linearDamping = 0.45; body.angularDamping = 0.45;
+        diceWorld.addBody(body); diceBodies.push(body);
+    }
+
+    setTimeout(() => {
+        showDiceResult(results, difficulty, state.name, diceType);
+        addRollToHistory(state.name, results, diceType, difficulty);
+        if (state.socket) state.socket.emit('roll-dice', { room: state.room, results, difficulty, diceType, who: state.name });
+        setTimeout(() => {
+            diceBodies.forEach(b => { if (diceWorld) diceWorld.removeBody(b); });
+            diceMeshes.forEach(m => { if (diceScene) diceScene.remove(m); });
+            diceBodies = []; diceMeshes = [];
+        }, 2800);
+    }, 2200);
 }
-function syncTokens(){ if(state.socket) state.socket.emit('tokens-update',{room:state.room,tokens:sceneTokens}); }
+
+function animateDice() {
+    diceAnimationId = requestAnimationFrame(animateDice);
+    if (!diceWorld) return;
+    diceWorld.step(1 / 60);
+    for (let i = 0; i < diceBodies.length; i++) {
+        if (diceMeshes[i] && diceBodies[i]) {
+            diceMeshes[i].position.copy(diceBodies[i].position);
+            diceMeshes[i].quaternion.copy(diceBodies[i].quaternion);
+        }
+    }
+    diceRenderer.render(diceScene, diceCamera);
+}
+
+function showDiceResult(results, difficulty, who, diceType) {
+    const overlay = document.getElementById('diceResultOverlay');
+    overlay.innerHTML = '';
+    results.forEach(r => {
+        const pill = document.createElement('div');
+        pill.className = 'dice-result-pill';
+        if (r === 1 && diceType > 1) pill.classList.add('pill-crit');
+        else if (r >= difficulty) pill.classList.add('pill-success');
+        else pill.classList.add('pill-fail');
+        pill.innerHTML = `🎲 <b>${r}</b>`;
+        overlay.appendChild(pill);
+    });
+    const title = document.createElement('div');
+    title.className = 'dice-result-pill';
+    title.style.background = 'rgba(233,69,96,0.15)';
+    title.style.borderColor = 'var(--accent)';
+    title.style.color = 'var(--accent)';
+    const successes = results.filter(r => r >= difficulty).length;
+    title.innerHTML = `👤 ${who} — <b>${successes}</b> sucesso(s)`;
+    overlay.appendChild(title);
+    const history = document.getElementById('rollHistory');
+    if (history) {
+        const card = document.createElement('div');
+        card.className = 'roll-result-card';
+        card.innerHTML = `<div class="roll-result-main">${successes} SUCESSO${successes===1?'':'S'}</div><div class="roll-result-sub">D${diceType} · dificuldade ${difficulty}+ · ${results.join(' · ')}</div>`;
+        history.insertBefore(card, history.firstChild);
+        setTimeout(() => card.remove(), 5000);
+    }
+    setTimeout(() => { overlay.innerHTML = ''; }, 5000);
+}
+
+function addRollToHistory(who, results, diceType, difficulty) {
+    const successes = results.filter(r => r >= difficulty).length;
+    const history = document.getElementById('rollHistory');
+    const item = document.createElement('div');
+    item.className = 'roll-history-item';
+    item.innerHTML = `<span class="who">${who}</span> <span class="res">${results.length}D${diceType}: [${results.join(', ')}] → ${successes} sucessos</span>`;
+    history.insertBefore(item, history.firstChild);
+    if (history.children.length > 8) history.lastChild.remove();
+}
 
 // ═══════════════════════════════════════════════════
 // SISTEMA DE MARCADORES (DOTS) — HELPERS
@@ -1841,26 +1790,72 @@ function vantRow(nameField, levelField, max=5) {
 }
 
 // Interação
-function setDot(field, val, max, square) {
+function setMarkerGroup(field, val) {
     const dots = document.querySelectorAll(`[data-field="${field}"]`);
+    const clicked = Array.from(dots).find(d => parseInt(d.dataset.val) === val);
+    const shouldClear = clicked && clicked.classList.contains('active');
     dots.forEach(d => {
         const dval = parseInt(d.dataset.val);
-        d.classList.toggle('active', dval <= val);
+        d.classList.toggle('active', !shouldClear && dval <= val);
     });
 }
-function setPoolDot(field, val, max) {
-    const dots = document.querySelectorAll(`[data-field="${field}"]`);
-    dots.forEach(d => {
-        const dval = parseInt(d.dataset.val);
-        d.classList.toggle('active', dval <= val);
+function setDot(field, val, max, square) { setMarkerGroup(field, val); }
+function setPoolDot(field, val, max) { setMarkerGroup(field, val); }
+function setVitCheck(field, val, max) { setMarkerGroup(field, val); }
+
+// ═══════════════════════════════════════════════════
+// TOKENS DO CENÁRIO
+// ═══════════════════════════════════════════════════
+function openTokenModal(){ document.getElementById('tokenModal').classList.add('active'); }
+function closeTokenModal(){ document.getElementById('tokenModal').classList.remove('active'); }
+function addToken(){
+    const file = document.getElementById('tokenFileInput').files[0];
+    const url = document.getElementById('tokenUrlInput').value.trim();
+    const size = Math.max(24, Math.min(140, parseInt(document.getElementById('tokenSizeInput').value)||58));
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = () => createToken(reader.result, size);
+        reader.readAsDataURL(file);
+    } else if (url) createToken(url, size);
+    else { showToast('Selecione uma imagem ou informe uma URL', 'error'); return; }
+}
+function createToken(url, size){
+    const token = { id: 'token-' + Date.now() + '-' + Math.random().toString(36).slice(2,7), url, x:50, y:50, size, owner:state.socketId || 'local' };
+    state.tokens.push(token);
+    renderTokens();
+    if (state.socket) state.socket.emit('token-added', {room:state.room, token});
+    closeTokenModal();
+    document.getElementById('tokenUrlInput').value=''; document.getElementById('tokenFileInput').value='';
+}
+function renderTokens(){
+    const layer=document.getElementById('tokenLayer'); if(!layer) return;
+    layer.innerHTML='';
+    state.tokens.forEach(token=>{
+        const img=document.createElement('img'); img.className='scene-token'+(state.selectedTokenId===token.id?' selected':'');
+        img.src=token.url; img.draggable=false; img.style.width=token.size+'px'; img.style.height=token.size+'px';
+        img.style.left=token.x+'%'; img.style.top=token.y+'%'; img.title='Clique para selecionar · arraste para mover · duplo clique para remover';
+        img.addEventListener('pointerdown', e=>startTokenDrag(e,token.id));
+        img.addEventListener('dblclick', e=>{e.preventDefault(); removeToken(token.id);});
+        layer.appendChild(img);
     });
 }
-function setVitCheck(field, val, max) {
-    const checks = document.querySelectorAll(`[data-field="${field}"]`);
-    checks.forEach(c => {
-        const cval = parseInt(c.dataset.val);
-        c.classList.toggle('active', cval <= val);
-    });
+function startTokenDrag(e,id){
+    e.preventDefault(); e.stopPropagation();
+    state.selectedTokenId=id; renderTokens();
+    const layer=document.getElementById('tokenLayer'); const token=state.tokens.find(t=>t.id===id);
+    if(!layer||!token)return;
+    const rect=layer.getBoundingClientRect();
+    const move=ev=>{
+        const x=Math.max(2,Math.min(98,((ev.clientX-rect.left)/rect.width)*100));
+        const y=Math.max(2,Math.min(98,((ev.clientY-rect.top)/rect.height)*100));
+        token.x=x; token.y=y; renderTokens();
+    };
+    const end=()=>{ document.removeEventListener('pointermove',move); document.removeEventListener('pointerup',end); if(state.socket) state.socket.emit('token-moved',{room:state.room,token}); };
+    document.addEventListener('pointermove',move); document.addEventListener('pointerup',end,{once:true});
+}
+function removeToken(id){
+    state.tokens=state.tokens.filter(t=>t.id!==id); state.selectedTokenId=null; renderTokens();
+    if(state.socket) state.socket.emit('token-removed',{room:state.room,id});
 }
 
 // ═══════════════════════════════════════════════════
@@ -2507,6 +2502,12 @@ function switchTab(tab) {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
     document.getElementById('tab-' + tab).classList.add('active');
+}
+
+function initDifficultySlider() {
+    const slider = document.getElementById('difficulty');
+    const display = document.getElementById('difficultyDisplay');
+    slider.addEventListener('input', () => { display.textContent = slider.value + '+'; });
 }
 
 function copyRoomCode() {

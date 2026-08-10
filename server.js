@@ -26,7 +26,7 @@ io.on('connection', (socket) => {
             }
             rooms[room] = {
                 password, system: system || 'lobisomem',
-                players: {}, currentImage: null, tokens: [],
+                players: {}, currentImage: null,
                 sharedMusic: [], createdAt: Date.now()
             };
         }
@@ -57,17 +57,32 @@ io.on('connection', (socket) => {
         if (rooms[data.room]) socket.to(data.room).emit('dice-rolled', data);
     });
 
-    socket.on('tokens-update', (data) => {
-        if (!rooms[data.room]) return;
-        rooms[data.room].tokens = Array.isArray(data.tokens) ? data.tokens.slice(0, 200) : [];
-        io.to(data.room).emit('tokens-updated', rooms[data.room].tokens);
-    });
-
     socket.on('change-image', (data) => {
         if (rooms[data.room]) {
             rooms[data.room].currentImage = data.url;
             socket.to(data.room).emit('image-changed', data.url);
         }
+    });
+
+    socket.on('token-added', (data) => {
+        if (rooms[data.room]) {
+            rooms[data.room].tokens = rooms[data.room].tokens || [];
+            rooms[data.room].tokens.push(data.token);
+            io.to(data.room).emit('token-added', data.token);
+        }
+    });
+    socket.on('token-moved', (data) => {
+        const room = rooms[data.room];
+        if (!room) return;
+        const i = (room.tokens || []).findIndex(t => t.id === data.token.id);
+        if (i >= 0) room.tokens[i] = data.token;
+        io.to(data.room).emit('token-moved', data.token);
+    });
+    socket.on('token-removed', (data) => {
+        const room = rooms[data.room];
+        if (!room) return;
+        room.tokens = (room.tokens || []).filter(t => t.id !== data.id);
+        io.to(data.room).emit('token-removed', data.id);
     });
 
     socket.on('music-control', (data) => {
