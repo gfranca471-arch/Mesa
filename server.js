@@ -26,7 +26,7 @@ io.on('connection', (socket) => {
             }
             rooms[room] = {
                 password, system: system || 'lobisomem',
-                players: {}, currentImage: null,
+                players: {}, currentImage: null, tokens: [],
                 sharedMusic: [], createdAt: Date.now()
             };
         }
@@ -46,6 +46,7 @@ io.on('connection', (socket) => {
             room, system: roomData.system,
             players: roomData.players,
             currentImage: roomData.currentImage,
+            tokens: roomData.tokens || [],
             sharedMusic: roomData.sharedMusic
         });
         socket.to(room).emit('user-joined', roomData.players[socket.id]);
@@ -54,6 +55,12 @@ io.on('connection', (socket) => {
 
     socket.on('roll-dice', (data) => {
         if (rooms[data.room]) socket.to(data.room).emit('dice-rolled', data);
+    });
+
+    socket.on('tokens-update', (data) => {
+        if (!rooms[data.room]) return;
+        rooms[data.room].tokens = Array.isArray(data.tokens) ? data.tokens.slice(0, 200) : [];
+        io.to(data.room).emit('tokens-updated', rooms[data.room].tokens);
     });
 
     socket.on('change-image', (data) => {
