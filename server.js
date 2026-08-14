@@ -226,6 +226,35 @@ async function loadRoomByCampaignKey(campaignKey) {
     }
     return null;
 }
+async function loadRoomByV6ApprovalId(approvalId) {
+    if (!approvalId) return null;
+    for (const room of Object.values(rooms)) if (room?.v6ApprovalId === approvalId) return room;
+    if (storageMode === 'postgres' && pgPool) {
+        const result = await pgPool.query(
+            `SELECT room_code, room_data FROM rpg_rooms
+             WHERE COALESCE(room_data->>'v6ApprovalId','') = $1
+             ORDER BY updated_at DESC LIMIT 1`, [approvalId]
+        );
+        if (result.rows[0]) {
+            const code = result.rows[0].room_code;
+            rooms[code] = normalizeRoom({ ...result.rows[0].room_data, players:{} }, code);
+            return rooms[code];
+        }
+    }
+    return null;
+}
+function approvalRequestFromRoom(room) {
+    if (!room?.v6ApprovalId || !room?.v6ApprovalToken) return null;
+    return {
+        id:room.v6ApprovalId, token:room.v6ApprovalToken, campaignName:room.campaignName,
+        campaignKey:room.campaignKey, requestedBy:room.v6RequestedBy || 'Narrador',
+        baseUrl:room.v6ApprovalBaseUrl || '', status:room.v6ApprovalStatus || 'pending',
+        createdAt:room.v6ApprovalCreatedAt || room.createdAt || Date.now(),
+        expiresAt:room.v6ApprovalExpiresAt || (Date.now()+V6_APPROVAL_TTL_MS),
+        emailed:Boolean(room.v6ApprovalEmailed), emailMethod:room.v6ApprovalEmailMethod || '',
+        emailError:room.v6ApprovalEmailError || ''
+    };
+}
 function internalCodeForCampaign(campaignKey) {
     const digest = crypto.createHash('sha256').update(String(campaignKey)).digest('hex').slice(0, 16).toUpperCase();
     return 'CAMP-' + digest;
@@ -265,7 +294,7 @@ function postJsonHttps(urlString, data, extraHeaders={}) {
             headers:{
                 'Content-Type':'application/json', 'Accept':'application/json',
                 'Content-Length':body.length,
-                'User-Agent':'Mesa-RPG-Online/1.9.1',
+                'User-Agent':'Mesa-RPG-Online/1.9.2',
                 ...extraHeaders
             },
             timeout:12000
@@ -295,8 +324,14 @@ async function sendV6ApprovalViaFormSubmit(req, socket) {
         Recusar:rejectUrl,
         Mensagem:'Pedido de criação de campanha Vampiro V6. O pedido expira em 30 minutos.'
     };
-    await postJsonHttps(endpoint, payload, { Origin:base, Referer:base+'/' });
-    return 'formsubmit';
+    try {
+        await postJsonHttps(endpoint, payload, { Origin:base, Referer:base+'/' });
+        return 'formsubmit';
+    } catch (err) {
+        const msg=String(err?.message||err||'');
+        if (/needs Activation|Activate Form|form.*activation/i.test(msg)) return 'formsubmit-activation';
+        throw err;
+    }
 }
 async function sendV6ApprovalEmail(req, socket) {
     const user = process.env.SMTP_USER || '';
@@ -345,56 +380,67 @@ async function createOrReuseV6Approval({ campaignName, campaignKey, requestedBy,
 function approvalResponsePage(title, body, ok=true) {
     return `<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtmlServer(title)}</title><body style="margin:0;background:#0a0a12;color:#eee;font-family:Arial,sans-serif;display:grid;place-items:center;min-height:100vh"><main style="max-width:560px;padding:28px;background:#151521;border-radius:16px;border:1px solid #333"><h1 style="color:${ok?'#00d9a5':'#ff5577'}">${escapeHtmlServer(title)}</h1><p style="line-height:1.6">${escapeHtmlServer(body)}</p></main></body></html>`;
 }
-app.get('/v6/approve', (req, res) => {
+app.get('/v6/approve', async (req, res) => {
     cleanupV6Approvals();
-    const item=v6ApprovalRequests.get(String(req.query.id||''));
-    if(!item || !secretMatches(req.query.token,item.token)) return res.status(404).send(approvalResponsePage('Pedido inválido','Este pedido não existe ou já expirou.',false));
-    item.status='approved'; item.approvedAt=Date.now();
-    res.send(approvalResponsePage('Campanha autorizada',`A campanha “${item.campaignName}” foi autorizada. O narrador que está aguardando será conectado automaticamente.`));
+    const id=String(req.query.id||''), token=String(req.query.token||'');
+    const item=v6ApprovalRequests.get(id) || null;
+    const room=await loadRoomByV6ApprovalId(id);
+    const expectedToken=item?.token || room?.v6ApprovalToken || '';
+    if((!item && !room) || !secretMatches(token,expectedToken)) return res.status(404).send(approvalResponsePage('Pedido inválido','Este pedido não existe ou já expirou.',false));
+    if(item){ item.status='approved'; item.approvedAt=Date.now(); }
+    if(room){
+        room.v6ApprovalStatus='approved';
+        room.v6ApprovedAt=Date.now();
+        room.v6ApprovalEmailError='';
+        await persistRoom(room.code);
+    }
+    const campaignName=room?.campaignName || item?.campaignName || 'Vampiro V6';
+    res.send(approvalResponsePage('Campanha autorizada',`A campanha “${campaignName}” foi autorizada e já está pronta. Se o narrador estiver aguardando, entrará automaticamente; se tiver saído, basta entrar novamente com o mesmo nome da campanha e senha.`));
 });
-app.get('/v6/reject', (req, res) => {
+app.get('/v6/reject', async (req, res) => {
     cleanupV6Approvals();
-    const item=v6ApprovalRequests.get(String(req.query.id||''));
-    if(!item || !secretMatches(req.query.token,item.token)) return res.status(404).send(approvalResponsePage('Pedido inválido','Este pedido não existe ou já expirou.',false));
-    item.status='rejected'; item.rejectedAt=Date.now();
-    res.send(approvalResponsePage('Campanha recusada',`A criação da campanha “${item.campaignName}” foi recusada.`,false));
+    const id=String(req.query.id||''), token=String(req.query.token||'');
+    const item=v6ApprovalRequests.get(id) || null;
+    const room=await loadRoomByV6ApprovalId(id);
+    const expectedToken=item?.token || room?.v6ApprovalToken || '';
+    if((!item && !room) || !secretMatches(token,expectedToken)) return res.status(404).send(approvalResponsePage('Pedido inválido','Este pedido não existe ou já expirou.',false));
+    if(item){ item.status='rejected'; item.rejectedAt=Date.now(); }
+    if(room){ room.v6ApprovalStatus='rejected'; room.v6RejectedAt=Date.now(); await persistRoom(room.code); }
+    const campaignName=room?.campaignName || item?.campaignName || 'Vampiro V6';
+    res.send(approvalResponsePage('Campanha recusada',`A criação da campanha “${campaignName}” foi recusada.`,false));
 });
-app.get('/api/v6-approval-status', (req,res) => {
+app.get('/api/v6-approval-status', async (req,res) => {
     cleanupV6Approvals();
-    const item=v6ApprovalRequests.get(String(req.query.id||''));
-    if(!item) return res.status(404).json({status:'expired'});
-    res.json({status:item.status, emailed:item.emailed, emailMethod:item.emailMethod||'', emailError:item.emailError||'', expiresAt:item.expiresAt});
+    const id=String(req.query.id||'');
+    const item=v6ApprovalRequests.get(id) || null;
+    const room=await loadRoomByV6ApprovalId(id);
+    if(!item && !room) return res.status(404).json({status:'expired'});
+    res.json({
+        status:room?.v6ApprovalStatus || item?.status || 'pending',
+        emailed:room ? Boolean(room.v6ApprovalEmailed) : Boolean(item?.emailed),
+        emailMethod:room?.v6ApprovalEmailMethod || item?.emailMethod || '',
+        emailError:room?.v6ApprovalEmailError || item?.emailError || '',
+        expiresAt:room?.v6ApprovalExpiresAt || item?.expiresAt || null
+    });
 });
-
 app.post('/api/v6-resend-approval', async (req,res) => {
     cleanupV6Approvals();
-    const item=v6ApprovalRequests.get(String(req.body?.id||''));
-    if(!item || item.status!=='pending') return res.status(404).json({ok:false,message:'Pedido não encontrado ou não está pendente.'});
+    const id=String(req.body?.id||'');
+    let item=v6ApprovalRequests.get(id) || null;
+    const room=await loadRoomByV6ApprovalId(id);
+    if(!item && room){ item=approvalRequestFromRoom(room); if(item) v6ApprovalRequests.set(item.id,item); }
+    const status=room?.v6ApprovalStatus || item?.status;
+    if(!item || status!=='pending') return res.status(404).json({ok:false,message:'Pedido não encontrado ou não está pendente.'});
     try {
-        item.emailMethod = await sendV6ApprovalEmail(item, null);
-        item.emailed = true; item.emailError='';
+        item.emailMethod=await sendV6ApprovalEmail(item,null); item.emailed=true; item.emailError='';
+        if(room){ room.v6ApprovalEmailed=true; room.v6ApprovalEmailMethod=item.emailMethod; room.v6ApprovalEmailError=''; await persistRoom(room.code); }
         return res.json({ok:true,emailMethod:item.emailMethod,email:V6_APPROVAL_EMAIL});
     } catch(err) {
-        item.emailed=false; item.emailError=err.message||String(err);
-        return res.status(502).json({ok:false,message:item.emailError});
+        const msg=err.message||String(err); item.emailed=false; item.emailError=msg;
+        if(room){ room.v6ApprovalEmailed=false; room.v6ApprovalEmailError=msg; await persistRoom(room.code); }
+        return res.status(502).json({ok:false,message:msg});
     }
 });
-
-function rtcConfig() {
-    const iceServers = [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
-    ];
-    const urls = String(process.env.TURN_URL || '').split(',').map(v => v.trim()).filter(Boolean);
-    if (urls.length) {
-        iceServers.push({
-            urls: urls.length === 1 ? urls[0] : urls,
-            username: process.env.TURN_USERNAME || '',
-            credential: process.env.TURN_CREDENTIAL || ''
-        });
-    }
-    return { iceServers, iceCandidatePoolSize: 10, bundlePolicy: 'max-bundle', rtcpMuxPolicy: 'require' };
-}
 
 app.get('/health', (req, res) => {
     res.status(200).json({
@@ -454,28 +500,33 @@ io.on('connection', (socket) => {
                 const requestedSystem = ['vampiro', 'vampirov6', 'lobisomem', 'dnd', 'changeling'].includes(data.system) ? data.system : 'lobisomem';
 
                 if (requestedSystem === 'vampirov6') {
-                    const approvalId=String(data.v6ApprovalId||'');
-                    let approval=approvalId ? v6ApprovalRequests.get(approvalId) : null;
-                    if (approval && approval.expiresAt <= Date.now()) { v6ApprovalRequests.delete(approvalId); approval=null; }
-                    const validApproval=approval && approval.campaignKey===campaignKey && approval.status==='approved';
-                    if (!validApproval) {
-                        approval = await createOrReuseV6Approval({ campaignName, campaignKey, requestedBy:name, socket });
-                        if (!approval.emailed) {
-                            return socket.emit('room-error', `Não foi possível enviar o pedido de autorização V6 para ${V6_APPROVAL_EMAIL}. O SMTP e o serviço alternativo de e-mail falharam. ${approval.emailError ? '('+approval.emailError+')' : ''}`);
-                        }
-                        socket.emit('v6-authorization-pending', { approvalId:approval.id, email:V6_APPROVAL_EMAIL, expiresAt:approval.expiresAt, emailMethod:approval.emailMethod||'email' });
-                        return;
-                    }
-                    approval.status='used';
+                    const approval=await createOrReuseV6Approval({campaignName,campaignKey,requestedBy:name,socket});
+                    const passwordFields=passwordRecord(suppliedPassword);
+                    room=normalizeRoom({
+                        ...passwordFields, campaignName,campaignKey,roomName:campaignName,roomNameKey:campaignKey,
+                        system:'vampirov6',v6Alpha:true,
+                        v6ApprovalStatus:'pending',v6ApprovalId:approval.id,v6ApprovalToken:approval.token,
+                        v6ApprovalCreatedAt:approval.createdAt,v6ApprovalExpiresAt:approval.expiresAt,
+                        v6ApprovalBaseUrl:approval.baseUrl,v6RequestedBy:name,
+                        v6ApprovalEmailed:Boolean(approval.emailed),v6ApprovalEmailMethod:approval.emailMethod||'',
+                        v6ApprovalEmailError:approval.emailError||'',
+                        currentImage:null,tokens:[],sharedMusic:[],sheets:{},rollHistory:[],profiles:{},
+                        musicState:{trackId:null,playing:false,position:0,startedAt:null,loop:true},
+                        players:{},createdAt:Date.now(),updatedAt:Date.now()
+                    },code);
+                    rooms[code]=room; await persistRoom(code);
+                    socket.emit('v6-authorization-pending',{
+                        approvalId:approval.id,email:V6_APPROVAL_EMAIL,expiresAt:approval.expiresAt,
+                        emailMethod:approval.emailMethod||(approval.emailError?'pending-with-warning':'email'),
+                        emailWarning:approval.emailError||''
+                    });
+                    return;
                 }
-
                 const passwordFields = passwordRecord(suppliedPassword);
                 room = normalizeRoom({
                     ...passwordFields,
                     campaignName, campaignKey, roomName:campaignName, roomNameKey:campaignKey,
-                    system: requestedSystem,
-                    v6Alpha: requestedSystem === 'vampirov6',
-                    currentImage: null,
+                    system: requestedSystem, v6Alpha:false, currentImage: null,
                     tokens: [], sharedMusic: [], sheets: {}, rollHistory: [], profiles: {},
                     musicState: { trackId: null, playing: false, position: 0, startedAt: null, loop: true },
                     players: {}, createdAt: Date.now(), updatedAt: Date.now()
@@ -488,6 +539,24 @@ io.on('connection', (socket) => {
                 Object.assign(room, passwordRecord(data.password || ''));
                 delete room.password;
                 await persistRoom(code);
+            }
+
+            if (room.system === 'vampirov6') {
+                // Salas V6 antigas, criadas antes do fluxo de aprovação persistente,
+                // são consideradas válidas para não pedir autorização novamente.
+                const approvalStatus=room.v6ApprovalStatus || 'approved';
+                if(approvalStatus==='pending'){
+                    if(role!=='narrador') return socket.emit('room-error','Esta campanha Vampiro V6 ainda aguarda autorização.');
+                    let approval=v6ApprovalRequests.get(room.v6ApprovalId)||approvalRequestFromRoom(room);
+                    if(approval&&!v6ApprovalRequests.has(approval.id)) v6ApprovalRequests.set(approval.id,approval);
+                    socket.emit('v6-authorization-pending',{
+                        approvalId:room.v6ApprovalId,email:V6_APPROVAL_EMAIL,expiresAt:room.v6ApprovalExpiresAt,
+                        emailMethod:room.v6ApprovalEmailMethod||(room.v6ApprovalEmailError?'pending-with-warning':'email'),
+                        emailWarning:room.v6ApprovalEmailError||''
+                    });
+                    return;
+                }
+                if(approvalStatus==='rejected') return socket.emit('room-error','A criação desta campanha Vampiro V6 foi recusada.');
             }
 
             // A identidade lógica do jogador é o Nome de Jogador dentro da sala.

@@ -123,3 +123,11 @@ Os arquivos `index.html`, `mesa.html`, `server.js` e `package.json` precisam est
 - Quando SMTP não existe, o servidor usa FormSubmit como relay para `V6_APPROVAL_EMAIL`. No primeiro uso, confirme a ativação recebida nesse e-mail e use o botão **Reenviar pedido** na tela de espera.
 - SMTP continua suportado opcionalmente se as variáveis forem definidas manualmente.
 - A ficha de Lobisomem foi revertida para a linha clássica da 3ª Edição/Revisada: as 12 tribos ativas da 3ª Edição/Revisada em português, incluindo Fianna, e campos Natureza, Comportamento e Seita no lugar dos campos de Patrono/Favor/Ban de W5.
+
+
+## V19.2 — autorização V6 persistente
+- Pedidos V6 ficam em tela de espera, com Voltar/Reenviar.
+- Resposta de ativação inicial do FormSubmit não é tratada como erro.
+- A autorização passa a ser persistida na própria campanha.
+- Depois de aprovada uma vez, a campanha V6 não pede autorização novamente.
+- Lobisomem 3ª edição inclui Fianna e Portadores da Luz Interior em português.

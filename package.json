@@ -1,6 +1,6 @@
 {
   "name": "mesa-rpg-online",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "description": "Mesa virtual de RPG com dados 3D, videochamada WebRTC, música e estado persistente/sincronizado por sala",
   "main": "server.js",
   "scripts": {

@@ -1017,16 +1017,18 @@ function emitJoinRoom(v6ApprovalId='') {
         micOn:state.isMicOn
     });
 }
-function showV6ApprovalBanner(email,emailMethod='email'){
+function showV6ApprovalBanner(email,emailMethod='email',emailWarning=''){
     let box=document.getElementById('v6ApprovalBanner');
     if(!box){
         box=document.createElement('div'); box.id='v6ApprovalBanner';
-        box.style.cssText='position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:5000;max-width:min(92vw,660px);background:#17131b;border:1px solid rgba(255,85,119,.45);box-shadow:0 14px 40px rgba(0,0,0,.55);border-radius:12px;padding:12px 16px;color:#fff;font-size:12px;text-align:center;line-height:1.5';
+        box.style.cssText='position:fixed;inset:0;z-index:5000;background:rgba(7,7,12,.96);display:flex;align-items:center;justify-content:center;padding:18px;color:#fff';
         document.body.appendChild(box);
     }
-    const firstUse=emailMethod==='formsubmit' ? `<div style="margin-top:7px;color:#f7c96b">No primeiro uso, ${escapeHtml(email||'o e-mail da administradora')} pode receber uma mensagem de ativação do FormSubmit. Confirme essa ativação uma única vez e clique em <b>Reenviar pedido</b>.</div>` : '';
-    box.innerHTML=`🩸 <b>Aguardando autorização para criar a campanha V6.</b><br>O pedido foi enviado para <b>${escapeHtml(email||'administradora')}</b>. Esta tela entrará automaticamente após a aprovação.${firstUse}<button type="button" onclick="resendV6Approval()" style="margin-top:9px;padding:7px 12px;border:1px solid rgba(255,255,255,.18);border-radius:8px;background:#2b2330;color:#fff;cursor:pointer">📧 Reenviar pedido</button>`;
+    const activation=/activation/i.test(emailMethod) ? `<div style="margin-top:10px;padding:9px 11px;border-radius:9px;background:rgba(247,201,107,.09);border:1px solid rgba(247,201,107,.25);color:#f7c96b">O serviço de e-mail está aguardando a ativação inicial. Se você recebeu o e-mail de ativação, confirme-o e depois use <b>Reenviar pedido</b>. Isto não é tratado como erro da campanha.</div>` : '';
+    const warning=emailWarning ? `<div style="margin-top:10px;color:#f7c96b;font-size:11px">Aviso de envio: ${escapeHtml(emailWarning)}</div>` : '';
+    box.innerHTML=`<div style="width:min(92vw,620px);background:#17131b;border:1px solid rgba(255,85,119,.45);box-shadow:0 18px 60px rgba(0,0,0,.65);border-radius:18px;padding:24px;text-align:center;line-height:1.55"><div style="font-size:34px;margin-bottom:8px">🩸</div><h2 style="margin:0 0 8px;color:#fff">Aguardando autorização V6</h2><div style="color:#c9c5d0">A solicitação da campanha foi registrada e enviada para <b style="color:#fff">${escapeHtml(email||'administradora')}</b>.<br>Quando for autorizada, esta tela entrará automaticamente na campanha.</div>${activation}${warning}<div style="display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin-top:18px"><button type="button" onclick="resendV6Approval()" style="padding:9px 14px;border:1px solid rgba(255,255,255,.18);border-radius:9px;background:#2b2330;color:#fff;cursor:pointer">📧 Reenviar pedido</button><button type="button" onclick="leaveV6ApprovalWait()" style="padding:9px 14px;border:1px solid rgba(255,255,255,.12);border-radius:9px;background:#111119;color:#ddd;cursor:pointer">← Voltar</button></div><div style="margin-top:14px;color:#777;font-size:10px">Após esta campanha ser autorizada uma vez, ela não solicitará nova autorização.</div></div>`;
 }
+function leaveV6ApprovalWait(){ stopV6ApprovalPoll(); window.location.replace('index.html'); }
 async function resendV6Approval(){
     if(!state.pendingV6ApprovalId) return;
     try{
@@ -1039,8 +1041,8 @@ async function resendV6Approval(){
 }
 function hideV6ApprovalBanner(){ document.getElementById('v6ApprovalBanner')?.remove(); }
 function stopV6ApprovalPoll(){ if(state.v6ApprovalPollTimer){clearInterval(state.v6ApprovalPollTimer);state.v6ApprovalPollTimer=null;} }
-function startV6ApprovalPoll(approvalId,email,emailMethod='email'){
-    state.pendingV6ApprovalId=approvalId; showV6ApprovalBanner(email,emailMethod); stopV6ApprovalPoll();
+function startV6ApprovalPoll(approvalId,email,emailMethod='email',emailWarning=''){
+    state.pendingV6ApprovalId=approvalId; showV6ApprovalBanner(email,emailMethod,emailWarning); stopV6ApprovalPoll();
     const poll=async()=>{
         try{
             const res=await fetch('/api/v6-approval-status?id='+encodeURIComponent(approvalId),{cache:'no-store'});
@@ -1085,7 +1087,7 @@ function initSocket() {
         renderVideoLayout();
     });
     state.socket.on('room-error', msg => { const text=msg||'Erro ao entrar na sala.'; showToast(text,'error'); try{sessionStorage.setItem('rpgLoginError',text);}catch(_){} setTimeout(()=>window.location.replace('index.html'),900); });
-    state.socket.on('v6-authorization-pending', data => { startV6ApprovalPoll(data.approvalId, data.email, data.emailMethod||'email'); showToast('Pedido de autorização V6 enviado para '+(data.email||'a administradora')+'.','info'); });
+    state.socket.on('v6-authorization-pending', data => { startV6ApprovalPoll(data.approvalId, data.email, data.emailMethod||'email', data.emailWarning||''); showToast('Campanha V6 aguardando autorização.','info'); });
 
     state.socket.on('room-joined', (data) => {
         stopV6ApprovalPoll(); hideV6ApprovalBanner(); state.pendingV6ApprovalId='';
@@ -2624,7 +2626,7 @@ function renderLobisomemSheet() {
                     <div class="info-field"><label>Totem:</label><input type="text" data-field="totem_matilha" value="${getVal('totem_matilha','')}"></div>
                     <div class="info-field"><label>Crônica:</label><input type="text" data-field="cronica" value="${getVal('cronica','')}"></div>
                     <div class="info-field"><label>Tribo:</label>
-                        <select data-field="tribo"><option value="" ${getVal('tribo','')===''?'selected':''}>—</option><optgroup label="3ª Edição — Tribos clássicas"><option value="Andarilhos do Asfalto" ${getVal('tribo','')==='Andarilhos do Asfalto'?'selected':''}>Andarilhos do Asfalto</option><option value="Crias de Fenris" ${getVal('tribo','')==='Crias de Fenris'?'selected':''}>Crias de Fenris</option><option value="Fianna" ${getVal('tribo','')==='Fianna'?'selected':''}>Fianna</option><option value="Filhos de Gaia" ${getVal('tribo','')==='Filhos de Gaia'?'selected':''}>Filhos de Gaia</option><option value="Fúrias Negras" ${getVal('tribo','')==='Fúrias Negras'?'selected':''}>Fúrias Negras</option><option value="Garras Vermelhas" ${getVal('tribo','')==='Garras Vermelhas'?'selected':''}>Garras Vermelhas</option><option value="Peregrinos Silenciosos" ${getVal('tribo','')==='Peregrinos Silenciosos'?'selected':''}>Peregrinos Silenciosos</option><option value="Presas de Prata" ${getVal('tribo','')==='Presas de Prata'?'selected':''}>Presas de Prata</option><option value="Roedores de Ossos" ${getVal('tribo','')==='Roedores de Ossos'?'selected':''}>Roedores de Ossos</option><option value="Senhores das Sombras" ${getVal('tribo','')==='Senhores das Sombras'?'selected':''}>Senhores das Sombras</option><option value="Uktena" ${getVal('tribo','')==='Uktena'?'selected':''}>Uktena</option><option value="Wendigo" ${getVal('tribo','')==='Wendigo'?'selected':''}>Wendigo</option></optgroup><option value="Outra" ${getVal('tribo','')==='Outra'?'selected':''}>Outra</option></select>
+                        <select data-field="tribo"><option value="" ${getVal('tribo','')===''?'selected':''}>—</option><optgroup label="3ª Edição — Tribos clássicas"><option value="Andarilhos do Asfalto" ${getVal('tribo','')==='Andarilhos do Asfalto'?'selected':''}>Andarilhos do Asfalto</option><option value="Crias de Fenris" ${getVal('tribo','')==='Crias de Fenris'?'selected':''}>Crias de Fenris</option><option value="Fianna" ${getVal('tribo','')==='Fianna'?'selected':''}>Fianna</option><option value="Portadores da Luz Interior" ${getVal('tribo','')==='Portadores da Luz Interior'?'selected':''}>Portadores da Luz Interior</option><option value="Filhos de Gaia" ${getVal('tribo','')==='Filhos de Gaia'?'selected':''}>Filhos de Gaia</option><option value="Fúrias Negras" ${getVal('tribo','')==='Fúrias Negras'?'selected':''}>Fúrias Negras</option><option value="Garras Vermelhas" ${getVal('tribo','')==='Garras Vermelhas'?'selected':''}>Garras Vermelhas</option><option value="Peregrinos Silenciosos" ${getVal('tribo','')==='Peregrinos Silenciosos'?'selected':''}>Peregrinos Silenciosos</option><option value="Presas de Prata" ${getVal('tribo','')==='Presas de Prata'?'selected':''}>Presas de Prata</option><option value="Roedores de Ossos" ${getVal('tribo','')==='Roedores de Ossos'?'selected':''}>Roedores de Ossos</option><option value="Senhores das Sombras" ${getVal('tribo','')==='Senhores das Sombras'?'selected':''}>Senhores das Sombras</option><option value="Uktena" ${getVal('tribo','')==='Uktena'?'selected':''}>Uktena</option><option value="Wendigo" ${getVal('tribo','')==='Wendigo'?'selected':''}>Wendigo</option></optgroup><option value="Outra" ${getVal('tribo','')==='Outra'?'selected':''}>Outra</option></select>
                     </div>
                     <div class="info-field"><label>Natureza:</label><input type="text" data-field="natureza" value="${getVal('natureza','')}"></div>
                     <div class="info-field"><label>Comportamento:</label><input type="text" data-field="comportamento" value="${getVal('comportamento','')}"></div>
